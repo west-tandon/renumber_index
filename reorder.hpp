@@ -606,7 +606,6 @@ inverted_index reorder(inverted_index& invidx,
         throw std::runtime_error(o.str());
     }
     timer t("reorder");
-    progress_bar progress("reorder invidx", invidx.size());
     cilk_for (uint32_t term = 0; term < invidx.size(); ++term) {
         auto p = sort_permutation(invidx.docids[term],
             [&remapping] (const auto& lhs, const auto& rhs) {
@@ -616,17 +615,15 @@ inverted_index reorder(inverted_index& invidx,
         auto freqs = apply_permutation(invidx.freqs[term], p);
         invidx.docids[term] = std::move(docids);
         invidx.freqs[term] = std::move(freqs);
-        ++progress;
     }
 
-    invidx.doc_id_mapping = std::vector<uint32_t>(remapping.size());
+    std::vector<uint32_t> p(remapping.size());
     cilk_for (uint32_t idx = 0; idx < remapping.size(); idx++) {
-        invidx.doc_id_mapping[remapping[idx]] = idx;
+        p[remapping[idx]] = idx;
     }
 
-    auto doc_lengths = apply_permutation(
-        invidx.doc_lengths,
-        invidx.doc_id_mapping);
+    auto doc_lengths = apply_permutation(invidx.doc_lengths, p);
     invidx.doc_lengths = std::move(doc_lengths);
+    invidx.doc_id_mapping = std::move(remapping);
     return invidx;
 }
