@@ -266,6 +266,12 @@ inverted_index read_ds2i_files(std::string ds2i_prefix)
         }
     }
     fclose_or_fail(ff);
+    std::string sizes_file = ds2i_prefix + ".sizes";
+    auto sf = fopen_or_fail(sizes_file, "rb");
+    {
+        idx.doc_lengths = read_uint32_list(sf);
+    }
+    fclose_or_fail(ff);
     idx.num_docs = num_docs;
     std::cout << "num_docs = " << num_docs << std::endl;
     std::cout << "num_lists = " << num_lists << std::endl;

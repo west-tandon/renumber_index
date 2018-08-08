@@ -1,3 +1,3 @@
 
 all:
-	g++ -Wall -Wextra -g -fcilkplus -O3 -march=native -o rec_graph_bisect.x main.cpp 
+	g++ -std=c++14 -Wall -Wextra -g -fcilkplus -O3 -march=native -o reorder main.cpp

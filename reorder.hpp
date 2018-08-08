@@ -5,6 +5,7 @@
 #include <random>
 #include <string>
 #include <unordered_map>
+#include <sstream>
 #include <vector>
 
 #include "util.hpp"
@@ -570,4 +571,62 @@ inverted_index reorder_docids_graph_bisection(
         recursive_bisection(bp, bg.graph.data(), bg.num_queries, bg.num_docs);
     }
     return recreate_invidx(bg);
+}
+
+template <typename T, typename Compare>
+std::vector<uint32_t> sort_permutation(
+    const std::vector<T>& vec,
+    Compare compare)
+{
+    std::vector<uint32_t> p(vec.size());
+    std::iota(p.begin(), p.end(), 0);
+    std::sort(p.begin(), p.end(),
+        [&](uint32_t i, uint32_t j){ return compare(vec[i], vec[j]); });
+    return p;
+}
+
+template <typename T>
+std::vector<T> apply_permutation(
+    const std::vector<T>& vec,
+    const std::vector<uint32_t>& p)
+{
+    std::vector<T> sorted_vec(vec.size());
+    std::transform(p.begin(), p.end(), sorted_vec.begin(),
+        [&](uint32_t i){ return vec[i]; });
+    return sorted_vec;
+}
+
+inverted_index reorder(inverted_index& invidx,
+    const std::vector<uint32_t>& remapping)
+{
+    if (remapping.size() != invidx.num_docs) {
+        std::ostringstream o;
+        o << "wrong remapping size: " << remapping.size()
+            << " (expected " << invidx.num_docs << ")\n";
+        throw std::runtime_error(o.str());
+    }
+    timer t("reorder");
+    progress_bar progress("reorder invidx", invidx.size());
+    cilk_for (uint32_t term = 0; term < invidx.size(); ++term) {
+        auto p = sort_permutation(invidx.docids[term],
+            [&remapping] (const auto& lhs, const auto& rhs) {
+                return remapping[lhs] < remapping[rhs];
+            });
+        auto docids = apply_permutation(invidx.docids[term], p);
+        auto freqs = apply_permutation(invidx.freqs[term], p);
+        invidx.docids[term] = std::move(docids);
+        invidx.freqs[term] = std::move(freqs);
+        ++progress;
+    }
+
+    invidx.doc_id_mapping = std::vector<uint32_t>(remapping.size());
+    cilk_for (uint32_t idx = 0; idx < remapping.size(); idx++) {
+        invidx.doc_id_mapping[remapping[idx]] = idx;
+    }
+
+    auto doc_lengths = apply_permutation(
+        invidx.doc_lengths,
+        invidx.doc_id_mapping);
+    invidx.doc_lengths = std::move(doc_lengths);
+    return invidx;
 }
