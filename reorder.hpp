@@ -612,6 +612,8 @@ inverted_index reorder(inverted_index& invidx,
                 return remapping[lhs] < remapping[rhs];
             });
         auto docids = apply_permutation(invidx.docids[term], p);
+        std::transform(std::begin(docids), std::end(docids), std::begin(docids),
+            [&remapping] (uint32_t x) -> uint32_t { return remapping[x]; });
         auto freqs = apply_permutation(invidx.freqs[term], p);
         invidx.docids[term] = std::move(docids);
         invidx.freqs[term] = std::move(freqs);
