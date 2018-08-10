@@ -271,7 +271,7 @@ inverted_index read_ds2i_files(std::string ds2i_prefix)
     {
         idx.doc_lengths = read_uint32_list(sf);
     }
-    fclose_or_fail(ff);
+    fclose_or_fail(sf);
     idx.num_docs = num_docs;
     std::cout << "num_docs = " << num_docs << std::endl;
     std::cout << "num_lists = " << num_lists << std::endl;
